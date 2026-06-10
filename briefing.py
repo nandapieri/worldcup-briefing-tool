@@ -204,32 +204,94 @@ Summary: {row["summary"]}
     articles_text = "\n---\n".join(article_lines)
 
     return f"""
-You are helping a football analytics team prepare a pre-match briefing for a World Cup 2026 match.
+You are helping a football analytics team prepare for a post-match World Cup analysis article.
+
+The goal is NOT to write the article itself.
+
+The goal is to help the analysts:
+- identify possible match narratives
+- anticipate tactical dynamics
+- think about useful visualizations
+- define what should be monitored during the game
+- prepare hypotheses that can later be validated with event data
 
 Match: {team_a} vs {team_b}
 Match date: {match_date}
 
 Use only the information from the collected article titles, summaries and URLs below.
-Do not invent facts.
-If information is uncertain, say it is uncertain.
-Focus on useful football analysis angles.
+
+Rules:
+- Do not invent facts.
+- If something is uncertain, explicitly say it is uncertain.
+- Focus on football analysis usefulness.
+- Do NOT use tables.
+- Do NOT use HTML tags.
+- Use headings and bullet points only.
+- Keep the writing concise and practical.
 
 Collected references:
 {articles_text}
 
-Create a structured pre-match briefing with:
+Generate a structured analysis preparation briefing with the following sections:
 
-1. Main Storylines
-2. Team News / Availability Notes
-3. Key Players to Watch
-4. Tactical Hypotheses
-5. What to Track Live During the Match
-6. Metrics to Check After Data Arrives
-7. Visual Ideas for the Article
-8. Possible Article Angles
-9. Source Links Used
+# Pre-Match Analysis Preparation — {team_a} vs {team_b}
 
-Keep it practical for a team that will need to publish quickly after the match.
+## 1. Main Storylines
+Main media and football narratives surrounding the match.
+
+## 2. Team Context
+Important squad, tactical, historical or psychological context.
+
+## 3. Tactical Hypotheses
+Possible tactical behaviors, structures, strengths, weaknesses, or expected game dynamics.
+
+## 4. Key Matchups to Monitor
+Interesting player battles, zones, or tactical interactions.
+
+## 5. Match Dynamics to Monitor
+What analysts should pay attention to during the match itself.
+
+Examples:
+- pressing intensity
+- transition frequency
+- wide overloads
+- set-piece dependency
+- possession asymmetry
+- counter-attacking patterns
+
+## 6. Data Questions to Investigate After the Match
+Questions that can later be answered with event data.
+
+Examples:
+- Did Mexico dominate territory but create low xG?
+- Was South Africa able to progress centrally?
+- Which players generated the most value in transition?
+- Which side controlled rest defense better?
+
+## 7. Potential Visualizations
+Suggest useful post-match visuals.
+
+Examples:
+- pass maps
+- xG flow
+- territory maps
+- progressive pass networks
+- shot maps
+- defensive action heatmaps
+- pressure maps
+- transition sequence examples
+- touch maps
+- possession chains
+
+For each visualization:
+- explain WHY it could be useful
+- explain WHAT football question it helps answer
+
+## 8. Possible Post-Match Narratives
+Possible article angles depending on how the match unfolds.
+
+## 9. Most Relevant Sources
+List only the most useful references.
 """
 
 

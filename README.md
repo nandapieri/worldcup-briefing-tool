@@ -1,0 +1,244 @@
+# ⚽ World Cup Pre-Match Briefing Tool
+
+An AI-assisted workflow for generating structured pre-match football briefings using news aggregation, tactical references, and LLM-powered synthesis.
+
+This project was created to support fast-turnaround football analysis workflows during the Data World Cup 2026 project.
+
+The tool:
+- collects recent match-related news
+- filters and organizes references
+- generates structured pre-match briefings
+- suggests tactical hypotheses, metrics, and article ideas
+
+---
+
+# 🚀 Features
+
+- Google News RSS aggregation
+- Reference source prioritization
+- Date filtering (only recent articles)
+- AI-generated tactical and analytical briefings
+- CSV export of collected articles
+- Markdown export of generated reports
+- Config-based workflow (no need to edit the script)
+
+---
+
+# 📂 Project Structure
+
+```bash
+worldcup-briefing-tool/
+│
+├── briefing.py
+├── match_config.json
+├── requirements.txt
+├── .env
+├── .gitignore
+│
+└── outputs/
+```
+
+---
+
+# ⚙️ Installation
+
+## 1. Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd worldcup-briefing-tool
+```
+
+---
+
+## 2. Create a virtual environment (recommended)
+
+### Mac/Linux
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+---
+
+## 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# 🔑 NVIDIA API Key Setup
+
+This project uses NVIDIA's AI inference platform.
+
+## 1. Create an NVIDIA account
+
+Go to:
+
+https://build.nvidia.com/explore/discover
+
+Create a free account if needed.
+
+---
+
+## 2. Find the model
+
+Search for:
+
+```text
+openai/gpt-oss-120b
+```
+
+---
+
+## 3. Generate an API Key
+
+Inside the model page:
+- click **Get API Key**
+- create a new key
+- copy the generated key
+
+---
+
+## 4. Create a `.env` file
+
+Create a file named:
+
+```bash
+.env
+```
+
+Add:
+
+```env
+NVIDIA_API_KEY=your_api_key_here
+```
+
+---
+
+# ⚠️ Important
+
+Never upload your `.env` file to GitHub.
+
+The repository already ignores it through `.gitignore`.
+
+---
+
+# 📝 Match Configuration
+
+Edit the `match_config.json` file:
+
+```json
+{
+  "team_a": "Mexico",
+  "team_b": "South Africa",
+  "match_date": "2026-06-11",
+  "output_dir": "outputs",
+  "max_articles_per_query": 8,
+  "days_before_match": 30
+}
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| `team_a` | Home team |
+| `team_b` | Away team |
+| `match_date` | Match date (`YYYY-MM-DD`) |
+| `output_dir` | Output folder |
+| `max_articles_per_query` | Max news results per query |
+| `days_before_match` | Article recency filter |
+
+---
+
+# ▶️ Running the Project
+
+```bash
+python briefing.py
+```
+
+---
+
+# 📤 Outputs
+
+The script generates:
+
+## 1. Articles CSV
+
+```bash
+outputs/mexico_vs_south_africa_articles.csv
+```
+
+Contains:
+- titles
+- URLs
+- publication dates
+- summaries
+- source prioritization
+
+---
+
+## 2. AI Briefing
+
+```bash
+outputs/mexico_vs_south_africa_briefing.md
+```
+
+Contains:
+- main storylines
+- tactical hypotheses
+- key players
+- metrics to track
+- visual ideas
+- article angle suggestions
+
+---
+
+# 🧠 Reference Sources
+
+## Analytics & Data
+- The Analyst
+- StatsBomb
+- Total Football Analysis
+- Hudl
+- FIFA Project
+
+## Tactical Analysis
+- Coaches' Voice
+- Breaking The Lines
+- Tifo Football
+- Spielverlagerung
+
+## Media & Tournament Coverage
+- BBC Sport
+- The Guardian
+- ESPN FC
+- Reuters
+- FourFourTwo
+- GOAL
+- The Athletic
+
+---
+
+# 🎯 Project Goal
+
+This tool was designed as a lightweight MVP to support:
+- football storytelling
+- tactical preparation
+- pre-match ideation
+- fast post-match workflows
+- collaborative football analytics projects
+
+The objective is not to replace analysis, but to accelerate context gathering and idea generation before matches.
+

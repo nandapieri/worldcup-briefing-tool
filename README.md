@@ -1,6 +1,6 @@
-# ⚽ World Cup Pre-Match Briefing Tool
+# ⚽ World Cup Briefing Tool
 
-An AI-assisted workflow for generating structured pre-match football briefings using news aggregation, tactical references, and LLM-powered synthesis.
+An AI-assisted workflow for generating structured football briefings using news aggregation, tactical references, and LLM-powered synthesis.
 
 This project was created to support fast-turnaround football analysis workflows during the Data World Cup 2026 project.
 
@@ -8,6 +8,7 @@ The tool:
 - collects recent match-related news
 - filters and organizes references
 - generates structured pre-match briefings
+- generates structured post-match briefings
 - suggests tactical hypotheses, metrics, and article ideas
 
 ---
@@ -30,7 +31,9 @@ The tool:
 worldcup-briefing-tool/
 │
 ├── briefing.py
+├── post_match_briefing.py
 ├── match_config.json
+├── post_match_config.json
 ├── requirements.txt
 ├── .env
 ├── .gitignore
@@ -164,8 +167,41 @@ Edit the `match_config.json` file:
 
 # ▶️ Running the Project
 
+## Pre-match briefing
+
 ```bash
 python briefing.py
+```
+
+## Post-match briefing
+
+Edit `post_match_config.json`:
+
+```json
+{
+  "team_a": "Mexico",
+  "team_b": "South Africa",
+  "match_date": "2026-06-11",
+  "match_datetime_utc": "2026-06-11T22:00:00Z",
+  "score": "2-1",
+  "output_dir": "outputs",
+  "max_articles_per_query": 8,
+  "days_after_match": 3
+}
+```
+
+`match_datetime_utc` is optional. When provided, post-match filtering starts from that exact UTC time instead of midnight on the match date.
+
+Then run:
+
+```bash
+python post_match_briefing.py
+```
+
+You can also pass a custom config file:
+
+```bash
+python post_match_briefing.py path/to/config.json
 ```
 
 ---
@@ -202,6 +238,29 @@ Contains:
 - metrics to track
 - visual ideas
 - article angle suggestions
+
+## 3. Post-Match Articles CSV
+
+```bash
+outputs/mexico_vs_south_africa_post_match_articles.csv
+```
+
+Contains post-match references collected from the match date through the configured post-match window.
+
+## 4. Post-Match Briefing
+
+```bash
+outputs/mexico_vs_south_africa_post_match_briefing.md
+```
+
+Contains:
+- confirmed match facts from collected sources
+- post-match storylines
+- tactical reading
+- turning points to review
+- data checks
+- visualization ideas
+- article angles
 
 ---
 
@@ -240,5 +299,4 @@ This tool was designed as a lightweight MVP to support:
 - fast post-match workflows
 - collaborative football analytics projects
 
-The objective is not to replace analysis, but to accelerate context gathering and idea generation before matches.
-
+The objective is not to replace analysis, but to accelerate context gathering and idea generation before and after matches.

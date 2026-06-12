@@ -299,6 +299,42 @@ Contains:
 
 ---
 
+# 📄 Markdown to PDF
+
+Edit `pdf_config.json`:
+
+```json
+{
+  "markdown_path": "outputs/mexico_vs_south_africa_post_match_briefing.md",
+  "output_dir": "outputs"
+}
+```
+
+Then run:
+
+```bash
+python md_to_pdf.py
+```
+
+You can also pass a custom config:
+
+```bash
+python md_to_pdf.py path/to/pdf_config.json
+```
+
+Optional config fields:
+
+| Parameter | Description |
+|---|---|
+| `markdown_path` | Source Markdown file |
+| `output_dir` | Folder where the PDF will be saved |
+| `output_filename` | Optional custom PDF filename |
+| `output_path` | Optional full PDF path; overrides `output_dir` and `output_filename` |
+
+The PDF converter uses `reportlab`, which is included in `requirements.txt`.
+
+---
+
 # 🧠 Reference Sources
 
 ## Analytics & Data

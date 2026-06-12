@@ -4,3 +4,4 @@ pandas
 feedparser
 beautifulsoup4
 requests
+reportlab

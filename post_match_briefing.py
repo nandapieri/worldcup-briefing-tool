@@ -4,13 +4,20 @@ import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 from openai import OpenAI
 
 from briefing import (
+    clean_text,
     fetch_google_news,
+    get_reference_domains,
+    get_reference_urls,
     is_reference_source,
     load_nvidia_client,
     parse_published_date,
@@ -21,6 +28,7 @@ POST_MATCH_KEYWORDS = [
     "after",
     "analysis",
     "as it happened",
+    "conclusions",
     "final score",
     "full time",
     "full-time",
@@ -35,6 +43,7 @@ POST_MATCH_KEYWORDS = [
     "report",
     "result",
     "takeaways",
+    "things we noticed",
     "talking points",
     "what we learned",
 ]
@@ -82,6 +91,7 @@ def build_post_match_queries(
         f"{match}{score_text} World Cup 2026 result",
         f"{match}{score_text} match report",
         f"{match}{score_text} recap",
+        f"{match}{score_text} conclusions",
         f"{match} highlights",
         f"{match} reaction",
         f"{match} tactical analysis",
@@ -89,6 +99,34 @@ def build_post_match_queries(
         f"{match} stats xG",
         f"{match} post-match analysis {match_date}",
     ]
+
+
+def normalize_site_filter(site: str) -> str:
+    parsed = urlparse(site if "://" in site else f"https://{site}")
+    netloc = parsed.netloc.replace("www.", "")
+    path = parsed.path.strip("/")
+
+    return f"{netloc}/{path}" if path else netloc
+
+
+def build_reference_site_queries(
+    team_a: str,
+    team_b: str,
+    reference_sites: list[str],
+) -> list[str]:
+    match = f"{team_a} {team_b}"
+    queries = []
+
+    for site in reference_sites:
+        site_filter = normalize_site_filter(site)
+        queries.extend(
+            [
+                f"site:{site_filter} {match} World Cup 2026",
+                f"site:{site_filter} {match} post-match analysis",
+            ]
+        )
+
+    return queries
 
 
 def parse_post_match_start(
@@ -105,6 +143,176 @@ def parse_post_match_start(
         start_dt = start_dt.replace(tzinfo=timezone.utc)
 
     return start_dt.astimezone(timezone.utc)
+
+
+def format_published_date(published_dt: datetime) -> str:
+    return format_datetime(published_dt.astimezone(timezone.utc), usegmt=True)
+
+
+def parse_article_date(
+    value: str,
+    match_date: str,
+    match_datetime_utc: Optional[str] = None,
+) -> str:
+    if not value:
+        return ""
+
+    value = clean_text(value)
+    parsed_dt = None
+
+    try:
+        parsed_dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        pass
+
+    if parsed_dt is None:
+        for date_format in ("%b %d, %Y", "%B %d, %Y", "%Y-%m-%d"):
+            try:
+                parsed_dt = datetime.strptime(value, date_format)
+                break
+            except ValueError:
+                continue
+
+    if parsed_dt is None:
+        return value
+
+    if parsed_dt.tzinfo is None:
+        parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
+
+    if (
+        match_datetime_utc
+        and parsed_dt.strftime("%Y-%m-%d") == match_date
+        and parsed_dt.hour == 0
+        and parsed_dt.minute == 0
+    ):
+        parsed_dt = parse_post_match_start(match_date, match_datetime_utc) + timedelta(
+            minutes=1
+        )
+
+    return format_published_date(parsed_dt)
+
+
+def find_json_ld_value(data, keys: tuple[str, ...]) -> str:
+    if isinstance(data, dict):
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, str):
+                return value
+
+        for value in data.values():
+            found = find_json_ld_value(value, keys)
+            if found:
+                return found
+
+    if isinstance(data, list):
+        for item in data:
+            found = find_json_ld_value(item, keys)
+            if found:
+                return found
+
+    return ""
+
+
+def get_meta_content(soup: BeautifulSoup, *selectors: tuple[str, str]) -> str:
+    for attr, value in selectors:
+        tag = soup.find("meta", attrs={attr: value})
+        if tag and tag.get("content"):
+            return clean_text(tag["content"])
+
+    return ""
+
+
+def fetch_reference_url(
+    url: str,
+    match_date: str,
+    match_datetime_utc: Optional[str] = None,
+) -> dict:
+    response = requests.get(
+        url,
+        headers={"User-Agent": "worldcup-briefing-tool/1.0"},
+        timeout=15,
+    )
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    json_ld_title = ""
+    json_ld_summary = ""
+    json_ld_date = ""
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+        except json.JSONDecodeError:
+            continue
+
+        json_ld_title = json_ld_title or find_json_ld_value(data, ("headline", "name"))
+        json_ld_summary = json_ld_summary or find_json_ld_value(data, ("description",))
+        json_ld_date = json_ld_date or find_json_ld_value(
+            data,
+            ("datePublished", "dateCreated", "dateModified"),
+        )
+
+    title = (
+        json_ld_title
+        or get_meta_content(soup, ("property", "og:title"), ("name", "twitter:title"))
+        or clean_text(soup.title.string if soup.title else "")
+    )
+    summary = (
+        json_ld_summary
+        or get_meta_content(
+            soup,
+            ("property", "og:description"),
+            ("name", "description"),
+            ("name", "twitter:description"),
+        )
+    )
+    published = (
+        json_ld_date
+        or get_meta_content(
+            soup,
+            ("property", "article:published_time"),
+            ("name", "pubdate"),
+            ("name", "date"),
+        )
+    )
+
+    if not published:
+        date_match = re.search(
+            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}, \d{4}\b",
+            soup.get_text(" ", strip=True),
+        )
+        published = date_match.group(0) if date_match else ""
+
+    return {
+        "query": "reference_url",
+        "title": clean_text(title),
+        "url": response.url,
+        "published": parse_article_date(published, match_date, match_datetime_utc),
+        "summary": clean_text(summary),
+    }
+
+
+def fetch_reference_urls(
+    urls: list[str],
+    match_date: str,
+    match_datetime_utc: Optional[str] = None,
+) -> list[dict]:
+    results = []
+
+    for url in urls:
+        if not url:
+            continue
+
+        print(f"Fetching reference URL: {url}")
+
+        try:
+            results.append(fetch_reference_url(url, match_date, match_datetime_utc))
+        except Exception as exc:
+            print(f"Could not fetch reference URL: {url} ({exc})")
+
+        time.sleep(0.5)
+
+    return results
 
 
 def score_appears_in_text(score: Optional[str], text: str) -> bool:
@@ -177,10 +385,33 @@ def collect_post_match_news(
     match_date: str,
     score: Optional[str] = None,
     match_datetime_utc: Optional[str] = None,
+    reference_urls: Optional[list[str]] = None,
+    reference_sites: Optional[list[str]] = None,
+    reference_sources_path: str = "reference_sources.csv",
+    max_reference_articles_per_query: int = 3,
     max_per_query: int = 8,
     days_after_match: int = 3,
 ) -> pd.DataFrame:
     all_results = []
+    reference_domains = get_reference_domains(reference_sources_path)
+
+    if reference_urls:
+        all_results.extend(
+            fetch_reference_urls(
+                urls=reference_urls,
+                match_date=match_date,
+                match_datetime_utc=match_datetime_utc,
+            )
+        )
+
+    sites = reference_sites or get_reference_urls(reference_sources_path)
+
+    for query in build_reference_site_queries(team_a, team_b, sites):
+        print(f"Searching reference site: {query}")
+        all_results.extend(
+            fetch_google_news(query, max_items=max_reference_articles_per_query)
+        )
+        time.sleep(0.5)
 
     for query in build_post_match_queries(team_a, team_b, match_date, score):
         print(f"Searching: {query}")
@@ -204,7 +435,9 @@ def collect_post_match_news(
     if df.empty:
         return df
 
-    df["is_reference_source"] = df["url"].apply(is_reference_source)
+    df["is_reference_source"] = df["url"].apply(
+        lambda url: is_reference_source(url, reference_domains)
+    )
 
     df = df.sort_values(
         by=["is_reference_source", "published_dt"],
@@ -355,8 +588,12 @@ def main() -> None:
     match_date = config["match_date"]
     score = config.get("score")
     match_datetime_utc = config.get("match_datetime_utc")
+    reference_urls = config.get("reference_urls", [])
+    reference_sites = config.get("reference_sites", [])
+    reference_sources_path = config.get("reference_sources_path", "reference_sources.csv")
     output_dir = config.get("output_dir", "outputs")
     max_articles_per_query = config.get("max_articles_per_query", 8)
+    max_reference_articles_per_query = config.get("max_reference_articles_per_query", 3)
     days_after_match = config.get("days_after_match", 3)
 
     os.makedirs(output_dir, exist_ok=True)
@@ -367,6 +604,10 @@ def main() -> None:
         match_date=match_date,
         score=score,
         match_datetime_utc=match_datetime_utc,
+        reference_urls=reference_urls,
+        reference_sites=reference_sites,
+        reference_sources_path=reference_sources_path,
+        max_reference_articles_per_query=max_reference_articles_per_query,
         max_per_query=max_articles_per_query,
         days_after_match=days_after_match,
     )

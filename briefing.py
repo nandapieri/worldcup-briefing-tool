@@ -4,7 +4,8 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import quote_plus
+from typing import Optional
+from urllib.parse import quote_plus, urlparse
 
 import pandas as pd
 import feedparser
@@ -12,29 +13,59 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 
-REFERENCE_DOMAINS = [
-    "theanalyst.com",
-    "statsbomb.com",
-    "totalfootballanalysis.com",
-    "coachesvoice.com",
-    "hudl.com",
-    "fifaproject.vercel.app",
-    "breakingthelines.com",
-    "tifofootball.com",
-    "spielverlagerung.com",
-    "nytimes.com",
-    "bbc.com",
-    "theguardian.com",
-    "espn.com",
-    "fourfourtwo.com",
-    "goal.com",
-    "reuters.com",
+DEFAULT_REFERENCE_SOURCES = [
+    {"category": "Analytics & Data", "name": "Opta Analyst", "url": "https://theanalyst.com"},
+    {"category": "Analytics & Data", "name": "StatsBomb", "url": "https://statsbomb.com/articles"},
+    {"category": "Analytics & Data", "name": "Total Football Analysis", "url": "https://totalfootballanalysis.com"},
+    {"category": "Analytics & Data", "name": "Coaches' Voice", "url": "https://www.coachesvoice.com"},
+    {"category": "Analytics & Data", "name": "Hudl", "url": "https://www.hudl.com/blog"},
+    {"category": "Analytics & Data", "name": "FIFA Project", "url": "https://fifaproject.vercel.app"},
+    {"category": "Tactical & Football Analysis", "name": "Breaking The Lines", "url": "https://breakingthelines.com"},
+    {"category": "Tactical & Football Analysis", "name": "Tifo Football", "url": "https://tifofootball.com"},
+    {"category": "Tactical & Football Analysis", "name": "Spielverlagerung", "url": "https://spielverlagerung.com"},
+    {"category": "Media & Tournament Coverage", "name": "The Athletic", "url": "https://www.nytimes.com/athletic/football"},
+    {"category": "Media & Tournament Coverage", "name": "BBC Sport", "url": "https://www.bbc.com/sport/football"},
+    {"category": "Media & Tournament Coverage", "name": "The Guardian", "url": "https://www.theguardian.com/football"},
+    {"category": "Media & Tournament Coverage", "name": "ESPN", "url": "https://www.espn.com/soccer"},
+    {"category": "Media & Tournament Coverage", "name": "FourFourTwo", "url": "https://www.fourfourtwo.com"},
+    {"category": "Media & Tournament Coverage", "name": "GOAL", "url": "https://www.goal.com"},
+    {"category": "Media & Tournament Coverage", "name": "Reuters", "url": "https://www.reuters.com/world-cup"},
 ]
 
 
 def load_config(config_path: str = "match_config.json") -> dict:
     with open(config_path, "r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def load_reference_sources(
+    csv_path: str = "reference_sources.csv",
+) -> pd.DataFrame:
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path).fillna("")
+
+    return pd.DataFrame(DEFAULT_REFERENCE_SOURCES)
+
+
+def source_url_to_domain(url: str) -> str:
+    parsed = urlparse(url if "://" in url else f"https://{url}")
+    return parsed.netloc.replace("www.", "")
+
+
+def get_reference_domains(csv_path: str = "reference_sources.csv") -> list[str]:
+    sources = load_reference_sources(csv_path)
+
+    return [
+        domain
+        for domain in sources["url"].apply(source_url_to_domain).dropna().unique()
+        if domain
+    ]
+
+
+def get_reference_urls(csv_path: str = "reference_sources.csv") -> list[str]:
+    sources = load_reference_sources(csv_path)
+
+    return [url for url in sources["url"].dropna().unique() if url]
 
 
 def load_nvidia_client() -> OpenAI:
@@ -139,8 +170,13 @@ def filter_articles_by_date(
     return df
 
 
-def is_reference_source(url: str) -> bool:
-    return any(domain in url for domain in REFERENCE_DOMAINS)
+def is_reference_source(
+    url: str,
+    reference_domains: Optional[list[str]] = None,
+) -> bool:
+    domains = reference_domains or get_reference_domains()
+
+    return any(domain in url for domain in domains)
 
 
 def collect_news(
@@ -149,8 +185,10 @@ def collect_news(
     match_date: str,
     max_per_query: int = 8,
     days_before_match: int = 30,
+    reference_sources_path: str = "reference_sources.csv",
 ) -> pd.DataFrame:
     all_results = []
+    reference_domains = get_reference_domains(reference_sources_path)
 
     for query in build_queries(team_a, team_b, match_date):
         print(f"Searching: {query}")
@@ -173,7 +211,9 @@ def collect_news(
     if df.empty:
         return df
 
-    df["is_reference_source"] = df["url"].apply(is_reference_source)
+    df["is_reference_source"] = df["url"].apply(
+        lambda url: is_reference_source(url, reference_domains)
+    )
 
     df = df.sort_values(
         by=["is_reference_source", "published_dt"],
@@ -347,6 +387,7 @@ def main() -> None:
     output_dir = config.get("output_dir", "outputs")
     max_articles_per_query = config.get("max_articles_per_query", 8)
     days_before_match = config.get("days_before_match", 30)
+    reference_sources_path = config.get("reference_sources_path", "reference_sources.csv")
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -358,6 +399,7 @@ def main() -> None:
         match_date=match_date,
         max_per_query=max_articles_per_query,
         days_before_match=days_before_match,
+        reference_sources_path=reference_sources_path,
     )
 
     match_name = safe_filename(f"{team_a}_vs_{team_b}")

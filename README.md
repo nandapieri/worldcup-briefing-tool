@@ -34,6 +34,7 @@ worldcup-briefing-tool/
 ├── post_match_briefing.py
 ├── match_config.json
 ├── post_match_config.json
+├── reference_sources.csv
 ├── requirements.txt
 ├── .env
 ├── .gitignore
@@ -145,10 +146,7 @@ Edit the `match_config.json` file:
 {
   "team_a": "Mexico",
   "team_b": "South Africa",
-  "match_date": "2026-06-11",
-  "output_dir": "outputs",
-  "max_articles_per_query": 8,
-  "days_before_match": 30
+  "match_date": "2026-06-11"
 }
 ```
 
@@ -159,9 +157,36 @@ Edit the `match_config.json` file:
 | `team_a` | Home team |
 | `team_b` | Away team |
 | `match_date` | Match date (`YYYY-MM-DD`) |
-| `output_dir` | Output folder |
-| `max_articles_per_query` | Max news results per query |
-| `days_before_match` | Article recency filter |
+
+Optional parameters:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `output_dir` | `outputs` | Output folder |
+| `reference_sources_path` | `reference_sources.csv` | CSV with trusted source categories and URLs |
+| `max_articles_per_query` | `8` | Max news results per query |
+| `days_before_match` | `30` | Article recency filter |
+
+---
+
+# 📚 Reference Sources
+
+Trusted sources are stored in:
+
+```bash
+reference_sources.csv
+```
+
+Schema:
+
+```csv
+category,name,url
+Analytics & Data,Opta Analyst,https://theanalyst.com
+```
+
+Both workflows use this file:
+- pre-match uses it to prioritize trusted sources in the collected articles
+- post-match uses it to run targeted source searches before broader searches
 
 ---
 
@@ -183,14 +208,24 @@ Edit `post_match_config.json`:
   "team_b": "South Africa",
   "match_date": "2026-06-11",
   "match_datetime_utc": "2026-06-11T22:00:00Z",
-  "score": "2-1",
-  "output_dir": "outputs",
-  "max_articles_per_query": 8,
-  "days_after_match": 3
+  "score": "2-1"
 }
 ```
 
 `match_datetime_utc` is optional. When provided, post-match filtering starts from that exact UTC time instead of midnight on the match date.
+
+`reference_sources_path` is optional. It points to the shared CSV used by both pre-match and post-match workflows to prioritize trusted analytics, tactical, and media sources.
+
+`reference_urls` can still be added to `post_match_config.json` when you want to force one or more specific articles into the post-match briefing. It is not needed for normal runs.
+
+Other optional post-match parameters:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `output_dir` | `outputs` | Output folder |
+| `max_articles_per_query` | `8` | Max general news results per query |
+| `max_reference_articles_per_query` | `3` | Max trusted-source results per targeted query |
+| `days_after_match` | `3` | Post-match article window |
 
 Then run:
 

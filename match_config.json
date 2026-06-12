@@ -1,8 +1,5 @@
 {
   "team_a": "Mexico",
   "team_b": "South Africa",
-  "match_date": "2026-06-11",
-  "output_dir": "outputs",
-  "max_articles_per_query": 8,
-  "days_before_match": 15
+  "match_date": "2026-06-11"
 }

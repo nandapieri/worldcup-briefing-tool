@@ -1,5 +1,6 @@
 {
   "team_a": "Mexico",
   "team_b": "South Africa",
-  "match_date": "2026-06-11"
+  "match_date": "2026-06-11",
+  "generate_pdf": true
 }

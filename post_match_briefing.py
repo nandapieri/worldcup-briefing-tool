@@ -23,6 +23,7 @@ from briefing import (
     parse_published_date,
     safe_filename,
 )
+from md_to_pdf import convert_markdown_to_pdf
 
 POST_MATCH_KEYWORDS = [
     "after",
@@ -595,6 +596,8 @@ def main() -> None:
     max_articles_per_query = config.get("max_articles_per_query", 8)
     max_reference_articles_per_query = config.get("max_reference_articles_per_query", 3)
     days_after_match = config.get("days_after_match", 3)
+    generate_pdf = config.get("generate_pdf", False)
+    pdf_output_dir = config.get("pdf_output_dir", output_dir)
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -642,6 +645,11 @@ def main() -> None:
         file.write(briefing)
 
     print(f"Saved briefing to: {md_path}")
+
+    if generate_pdf:
+        pdf_path = os.path.join(pdf_output_dir, f"{match_name}_post_match_briefing.pdf")
+        convert_markdown_to_pdf(md_path, pdf_path)
+        print(f"Saved PDF to: {pdf_path}")
 
 
 if __name__ == "__main__":

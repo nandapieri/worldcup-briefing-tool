@@ -146,7 +146,8 @@ Edit the `match_config.json` file:
 {
   "team_a": "Mexico",
   "team_b": "South Africa",
-  "match_date": "2026-06-11"
+  "match_date": "2026-06-11",
+  "generate_pdf": true
 }
 ```
 
@@ -166,6 +167,8 @@ Optional parameters:
 | `reference_sources_path` | `reference_sources.csv` | CSV with trusted source categories and URLs |
 | `max_articles_per_query` | `8` | Max news results per query |
 | `days_before_match` | `30` | Article recency filter |
+| `generate_pdf` | `false` | Generate a PDF automatically after the Markdown briefing |
+| `pdf_output_dir` | Same as `output_dir` | Optional folder for generated PDFs |
 
 ---
 
@@ -208,7 +211,8 @@ Edit `post_match_config.json`:
   "team_b": "South Africa",
   "match_date": "2026-06-11",
   "match_datetime_utc": "2026-06-11T22:00:00Z",
-  "score": "2-1"
+  "score": "2-1",
+  "generate_pdf": true
 }
 ```
 
@@ -226,6 +230,8 @@ Other optional post-match parameters:
 | `max_articles_per_query` | `8` | Max general news results per query |
 | `max_reference_articles_per_query` | `3` | Max trusted-source results per targeted query |
 | `days_after_match` | `3` | Post-match article window |
+| `generate_pdf` | `false` | Generate a PDF automatically after the Markdown briefing |
+| `pdf_output_dir` | Same as `output_dir` | Optional folder for generated PDFs |
 
 Then run:
 

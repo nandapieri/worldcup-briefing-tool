@@ -12,6 +12,8 @@ import feedparser
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from md_to_pdf import convert_markdown_to_pdf
+
 
 DEFAULT_REFERENCE_SOURCES = [
     {"category": "Analytics & Data", "name": "Opta Analyst", "url": "https://theanalyst.com"},
@@ -388,6 +390,8 @@ def main() -> None:
     max_articles_per_query = config.get("max_articles_per_query", 8)
     days_before_match = config.get("days_before_match", 30)
     reference_sources_path = config.get("reference_sources_path", "reference_sources.csv")
+    generate_pdf = config.get("generate_pdf", False)
+    pdf_output_dir = config.get("pdf_output_dir", output_dir)
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -426,6 +430,11 @@ def main() -> None:
         file.write(briefing)
 
     print(f"Saved briefing to: {md_path}")
+
+    if generate_pdf:
+        pdf_path = os.path.join(pdf_output_dir, f"{match_name}_briefing.pdf")
+        convert_markdown_to_pdf(md_path, pdf_path)
+        print(f"Saved PDF to: {pdf_path}")
 
 
 if __name__ == "__main__":
